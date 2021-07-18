@@ -277,15 +277,32 @@ void PowerChatClient::setupTCP()
                         this->userList[i] = user;
 
                         //将用户列表分列到在线和离线中
-                        if(status==1)
+                        if(status>=1&&status!=6)
                         {
-                            ui->comboBox_online->addItem(name);
+                            if(status==1)
+                                ui->comboBox_online->addItem(name.append(" -> 在线"));
+                            if(status==2)
+                                ui->comboBox_online->addItem(name.append(" -> Q我吧"));
+                            if(status==3)
+                                ui->comboBox_online->addItem(name.append(" -> 离开"));
+                            if(status==4)
+                                ui->comboBox_online->addItem(name.append(" -> 忙碌"));
+                            if(status==5)
+                                ui->comboBox_online->addItem(name.append(" -> 请勿打扰"));
                             onlineAmount++;
                         }
                         else
                         {
-                            ui->comboBox_offline->addItem(name);
-                            offlineAmount++;
+                            if(name==userName&&status==6)
+                            {
+                                ui->comboBox_online->addItem(name.append(" -> 隐身"));
+                                onlineAmount++;
+                            }
+                            else
+                            {
+                                ui->comboBox_offline->addItem(name);
+                                offlineAmount++;
+                            }
                         }
                     }
                     ui->label_online_num->setText(QString("%1").arg(onlineAmount));
@@ -372,7 +389,8 @@ void PowerChatClient::on_btn_send_clicked()//发送消息
         }
         else if(ui->comboBox_online->currentIndex()!=0)
         {
-            recipientName = ui->comboBox_online->currentText();
+            QStringList temp = ui->comboBox_online->currentText().split("-");
+            recipientName = temp.first().trimmed();
         }
         else
         {
@@ -394,36 +412,6 @@ void PowerChatClient::on_btn_send_clicked()//发送消息
     }
 }
 
-void PowerChatClient::on_comboBox_status_currentIndexChanged(const QString &arg1)//更改在线离线状态
-{
-    if(ui->comboBox_status->currentText()=="在线")
-    {
-        qDebug()<<"CONNECTING TO SERVER"<<endl;
-        QString IP = "120.78.235.195";
-        quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
-
-        ui->lineEdit_IP->setText(IP);
-        ui->lineEdit_port->setText(QString("%1").arg(port));
-
-        tcpSocketToServer->connectToHost(QHostAddress(IP),port);
-        tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
-
-        qDebug()<<"Client:Request for Login"<<endl;
-        //        timer->start(1000);
-    }
-
-    if(ui->comboBox_status->currentText()=="离线")
-    {
-        for (int i=0; i<userAmount; i++)
-        {
-            delete userList[i];
-            userList[i] = nullptr;
-        }
-        userAmount = 0;
-        if(tcpSocketToServer->isOpen())
-            tcpSocketToServer->disconnectFromHost();
-    }
-}
 
 void PowerChatClient::on_comboBox_online_currentIndexChanged(int index)//从在线好友列表中找到要联系的好友
 {
@@ -470,4 +458,40 @@ void PowerChatClient::on_btn_contact_disconnect_clicked()//不想和你聊了，
     ui->lineEdit_msg->clear();
     ui->lineEdit_IP->setText("120.78.235.195");
     ui->lineEdit_port->setText("10086");
+}
+
+void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户状态变更
+{
+    if(ui->comboBox_status->currentIndex()==1)
+    {
+        qDebug()<<"CONNECTING TO SERVER"<<endl;
+        QString IP = "120.78.235.195";
+        quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
+
+        ui->lineEdit_IP->setText(IP);
+        ui->lineEdit_port->setText(QString("%1").arg(port));
+
+        tcpSocketToServer->connectToHost(QHostAddress(IP),port);
+        tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
+
+        qDebug()<<"Client:Request for Login"<<endl;
+        //        timer->start(1000);
+    }
+
+    else if(ui->comboBox_status->currentIndex()==0)
+    {
+        for (int i=0; i<userAmount; i++)
+        {
+            delete userList[i];
+            userList[i] = nullptr;
+        }
+        userAmount = 0;
+        if(tcpSocketToServer->isOpen())
+            tcpSocketToServer->disconnectFromHost();
+    }
+
+    else
+    {
+        tcpSocketToServer->write(QString("##STATUS_CHANGE_REQUEST##%1##%2").arg(userName).arg(index).toUtf8());
+    }
 }

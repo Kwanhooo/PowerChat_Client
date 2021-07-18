@@ -34,10 +34,11 @@ public:
 private slots:
     void on_btn_clear_clicked();
     void on_btn_send_clicked();
-    void on_comboBox_status_currentIndexChanged(const QString &arg1);
     void on_comboBox_online_currentIndexChanged(int index);
     void on_comboBox_offline_currentIndexChanged(int index);
     void on_btn_contact_disconnect_clicked();
+    void on_comboBox_status_currentIndexChanged(int index);
+
 private:
     Ui::PowerChatClient *ui;
 
@@ -48,14 +49,11 @@ private:
     //一些必要参数以及初始化
     QString userName;
     bool hasLoadOffline;//是否已经请求加载离线消息
-    bool isUpdated;//是否已经
     static const int MAX_USERS_AMOUNT = 20;
     User *userList[MAX_USERS_AMOUNT];
-    int userAmount;//用户总数
+
+    int userAmount;//实际所有用户总数
     void initParameter();
-
-
-
     void firstConnectWithServer();
     void initClientConfig();
     void setupTCP();
