@@ -30,18 +30,21 @@ SOURCES += \
         powerchatclient.cpp \
     logindialog.cpp \
     user.cpp \
-    registerdialog.cpp
+    registerdialog.cpp \
+    chatwidget.cpp
 
 HEADERS += \
         powerchatclient.h \
     logindialog.h \
     user.h \
-    registerdialog.h
+    registerdialog.h \
+    chatwidget.h
 
 FORMS += \
         powerchatclient.ui \
     logindialog.ui \
-    registerdialog.ui
+    registerdialog.ui \
+    chatwidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

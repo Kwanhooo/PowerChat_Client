@@ -11,6 +11,7 @@
 #include <QTextStream>
 #include <QtNetwork>
 
+#include <QMouseEvent>
 
 #include <QTimer>
 #include <QTime>
@@ -39,6 +40,10 @@ private slots:
     void on_btn_contact_disconnect_clicked();
     void on_comboBox_status_currentIndexChanged(int index);
 
+    void on_btn_close_clicked();
+
+    void on_btn_min_clicked();
+
 private:
     Ui::PowerChatClient *ui;
 
@@ -59,6 +64,31 @@ private:
     void setupTCP();
     void connectFailed();
 
+
+    QPoint m_lastPos;
+    bool isPressedWidget;
+
+    void mousePressEvent(QMouseEvent *event)
+    {
+        m_lastPos = event->globalPos();
+        isPressedWidget = true; // 当前鼠标按下的即是QWidget而非界面上布局的其它控件
+    }
+
+    void mouseMoveEvent(QMouseEvent *event)
+    {
+        if (isPressedWidget) {
+            this->move(this->x() + (event->globalX() - m_lastPos.x()),
+                       this->y() + (event->globalY() - m_lastPos.y()));
+            m_lastPos = event->globalPos();
+        }
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event)
+    {
+        // 其实这里的mouseReleaseEvent函数可以不用重写
+        m_lastPos = event->globalPos();
+        isPressedWidget = false; // 鼠标松开时，置为false
+    }
 };
 
 #endif // POWERCHATCLIENT_H

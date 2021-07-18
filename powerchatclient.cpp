@@ -14,6 +14,8 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
     ui(new Ui::PowerChatClient)
 {
     ui->setupUi(this);
+    this->setWindowFlag(Qt::FramelessWindowHint);
+    ui->titleBarGroup->setAlignment(Qt::AlignRight);
 
     //初始化一些必要设置参数
     initParameter();
@@ -153,7 +155,7 @@ void PowerChatClient::setupTCP()
                 //##LOGIN_SUCCESS##userName
             {
                 this->userName = response.section("##",2,2);
-                tcpSocketToServer->write("##REQUEST_USER_CONFIG");
+                tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
                 QString userNameLabelText = userName;
                 int currentHour = QTime::currentTime().hour();
                 if(currentHour >=1 &&currentHour<=6)
@@ -494,4 +496,23 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
     {
         tcpSocketToServer->write(QString("##STATUS_CHANGE_REQUEST##%1##%2").arg(userName).arg(index).toUtf8());
     }
+}
+
+void PowerChatClient::on_btn_close_clicked()
+{
+    for (int i=0; i<userAmount; i++)
+    {
+        delete userList[i];
+        userList[i] = nullptr;
+    }
+    userAmount = 0;
+    if(tcpSocketToServer->isOpen())
+        tcpSocketToServer->disconnectFromHost();
+
+    this->close();
+}
+
+void PowerChatClient::on_btn_min_clicked()
+{
+    this->setWindowState(Qt::WindowMinimized);
 }
