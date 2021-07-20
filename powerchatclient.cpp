@@ -28,6 +28,12 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
 
     //第一次与服务器连接
     firstConnectWithServer();
+
+    //初始化其他窗口
+    this->ad = new AddDialog();
+    ad->hide();
+    connect(this,SIGNAL(addWithSocket(QString,QTcpSocket*)),ad,SLOT(getTcpSocket(QString,QTcpSocket*)));
+    connect(this,SIGNAL(addResponse(QString)),ad,SLOT(getResponse(QString)));
 }
 
 PowerChatClient::~PowerChatClient()
@@ -52,10 +58,43 @@ void PowerChatClient::initParameter()
     connect(timer, &QTimer::timeout, this, &PowerChatClient::connectFailed);
 }
 
+/*
+ * 以下代码段为隐藏标题栏之后（太丑），重写的鼠标事件
+ */
+void PowerChatClient::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        m_Drag = true;
+        m_DragPosition = event->globalPos() - this->pos();
+        event->accept();
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void PowerChatClient::mouseMoveEvent(QMouseEvent *event)
+{
+    if (m_Drag && (event->buttons() && Qt::LeftButton))
+    {
+        move(event->globalPos() - m_DragPosition);
+        event->accept();
+        emit mouseButtonMove(event->globalPos() - m_DragPosition);
+        emit signalMainWindowMove();
+    }
+    QWidget::mouseMoveEvent(event);
+}
+
+void PowerChatClient::mouseReleaseEvent(QMouseEvent *event)
+{
+    Q_UNUSED(event);
+    m_Drag = false;
+    QWidget::mouseReleaseEvent(event);
+}
 
 /*
  * 以下代码段为运行时所需要的函数
  */
+
 void PowerChatClient::firstConnectWithServer()
 {
     qDebug()<<"CONNECTING TO SERVER"<<endl;
@@ -70,8 +109,8 @@ void PowerChatClient::firstConnectWithServer()
     tcpSocketToServer->write("##LOGIN_REQUEST");
     //##LOGIN_REQUEST
 
-    qDebug()<<"Client:Request for Login"<<endl;
-    timer->start(500);
+    qDebug()<<"Now Request for Login"<<endl;
+    timer->start(1000);
 }
 
 void PowerChatClient::initClientConfig()
@@ -192,12 +231,11 @@ void PowerChatClient::setupTCP()
                     userNameLabelText.append("，晚上好");
                 if(currentHour == 23||currentHour == 0)
                     userNameLabelText.append("，早点睡觉吧");
-                userNameLabelText.append(",早上好!");
                 ui->label_userName->setText(userNameLabelText);
 
                 //登陆成功，向Server端发送申请，获取用户列表信息
-                tcpSocketToServer->write("##REQUEST_USER_CONFIG");
-                //##REQUEST_USER_CONFIG
+                tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
+                //##REQUEST_USER_CONFIG##userName
             }
 
             else if(response.section("##",1,1)=="LOGIN_FAILED")
@@ -345,11 +383,126 @@ void PowerChatClient::setupTCP()
                         QString recipientName = temp.section("&&",2,2);
                         qDebug()<<msg<<endl;
                         ui->textBrowser->append("------------您有离线消息-----------");
-                        ui->textBrowser->append(QString("<font color=orange>%1:</font><font color=black>%2</font>").arg(friendName).arg(msg)); //消息显示格式！
+
+                        //是指令类型的信息
+                        if(msg.contains("NEW_FRIEND_REQUEST"))
+                            //@@NEW_FRIEND_REQUEST@@REQUESTER
+                        {
+                            QString requesterName = msg.section("@@",2,2);
+                            QMessageBox requestBox;
+                            requestBox.setWindowTitle("验证消息");
+                            requestBox.setText(QString("%1请求添加您为好友，是否同意？").arg(requesterName));
+                            requestBox.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
+                            if(requestBox.exec() == QMessageBox::Yes)
+                            {
+                                QString responseToServer = "##FRIEND_REQUEST_RETURN##";
+                                //##FRIEND_REQUEST_RETURN##REQUESTER##USERNAME##STATUS
+                                responseToServer.append(requesterName);
+                                responseToServer.append("##");
+                                responseToServer.append(userName);
+                                responseToServer.append("##");
+                                responseToServer.append("ACCEPTED");
+                                qDebug()<<QString("已同意来自%1的好友请求，现在向服务器回应::%2").arg(requesterName).arg(responseToServer)<<endl;
+                                tcpSocketToServer->write(responseToServer.toUtf8());
+                                qDebug()<<"发送回应完成"<<endl;
+                            }
+                            else
+                            {
+                                QString responseToServer = "##FRIEND_REQUEST_RETURN##";
+                                responseToServer.append(requesterName);
+                                responseToServer.append("##");
+                                responseToServer.append(userName);
+                                responseToServer.append("##");
+                                responseToServer.append("REFUSED");
+                                qDebug()<<QString("已拒绝来自%1的好友请求，现在向服务器回应::%2").arg(requesterName).arg(responseToServer)<<endl;
+                                tcpSocketToServer->write(responseToServer.toUtf8());
+                                qDebug()<<"发送回应完成"<<endl;
+                            }
+                        }
+
+                        else if(msg.contains("FRIEND_REQUEST_STATUS"))
+                            //@@FRIEND_REQUEST_STATUS@@FRIENDNAME@@STATUS
+                        {
+                            QString friendName = msg.section("@@",2,2);
+                            QString status = msg.section("@@",3,3);
+
+                            if(status=="ACCEPTED")
+                            {
+                                QMessageBox::information(this,"验证消息",QString("%1已接受您的好友请求！").arg(friendName));
+                                //重新向服务器请求更新一次好友列表
+                                tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
+                            }
+                            else
+                            {
+                                QMessageBox::information(this,"验证消息",QString("%1拒绝了您的好友请求").arg(friendName));
+                            }
+                        }
+
+                        //是好友消息
+                        else
+                            ui->textBrowser->append(QString("<font color=orange>%1:</font><font color=black>%2</font>").arg(friendName).arg(msg)); //消息显示格式！
                     }
                 }
             }
-
+            else if(response.section("##",1,1) == "IS_FRIEND_FOUND")
+                //##IS_FRIEND_FOUND##FRIENDNAME##STATUS
+            {
+                emit(addResponse(response));
+            }
+            else if(response.section("##",1,1) == "FRIEND_REQUEST_STATUS")
+                //##FRIEND_REQUEST_STATUS##FRIENDNAME##STATUS
+            {
+                QString friendName = response.section("##",2,2);
+                QString status = response.section("##",3,3);
+                if(status=="ACCEPTED")
+                {
+                    QMessageBox::information(this,"验证消息",QString("%1已接受您的好友请求！").arg(friendName));
+                    //重新向服务器请求更新一次好友列表
+                    tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
+                }
+                else
+                {
+                    QMessageBox::information(this,"验证消息",QString("%1拒绝了您的好友请求").arg(friendName));
+                }
+            }
+            else if(response.section("##",1,1) == "NEW_FRIEND_REQUEST")
+                //##NEW_FRIEND_REQUEST##REQUESTER
+            {
+                QString requesterName = response.section("##",2,2);
+                QMessageBox requestBox;
+                requestBox.setWindowTitle("验证消息");
+                requestBox.setText(QString("%1请求添加您为好友，是否同意？").arg(requesterName));
+                requestBox.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
+                if(requestBox.exec() == QMessageBox::Yes)
+                {
+                    QString responseToServer = "##FRIEND_REQUEST_RETURN##";
+                    //##FRIEND_REQUEST_RETURN##REQUESTER##USERNAME##STATUS
+                    responseToServer.append(requesterName);
+                    responseToServer.append("##");
+                    responseToServer.append(userName);
+                    responseToServer.append("##");
+                    responseToServer.append("ACCEPTED");
+                    qDebug()<<QString("已同意来自%1的好友请求，现在向服务器回应::%2").arg(requesterName).arg(responseToServer)<<endl;
+                    tcpSocketToServer->write(responseToServer.toUtf8());
+                    qDebug()<<"发送回应完成"<<endl;
+                }
+                else
+                {
+                    QString responseToServer = "##FRIEND_REQUEST_RETURN##";
+                    responseToServer.append(requesterName);
+                    responseToServer.append("##");
+                    responseToServer.append(userName);
+                    responseToServer.append("##");
+                    responseToServer.append("REFUSED");
+                    qDebug()<<QString("已拒绝来自%1的好友请求，现在向服务器回应::%2").arg(requesterName).arg(responseToServer)<<endl;
+                    tcpSocketToServer->write(responseToServer.toUtf8());
+                    qDebug()<<"发送回应完成"<<endl;
+                }
+            }
+            else
+            {
+                qDebug()<<"收到了不正确的指令信息！"<<endl;
+            }
 
         }
         else
@@ -403,7 +556,7 @@ void PowerChatClient::on_btn_send_clicked()//发送消息
 
 
         tcpSocketToServer->write(msgToSend.toUtf8());
-        qDebug()<<"MESSAGE HAS SENDED TO SERVER::"<<msgToSend<<endl;
+        qDebug()<<"MESSAGE HAS SENT TO SERVER::"<<msgToSend<<endl;
 
         QString msg = QString("<font color=blue>%1:</font><font color=black>%2</font>")
                 .arg(userName).arg(ui->lineEdit_msg->text()); //将自己发的消息显示上来
@@ -466,21 +619,24 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
 {
     if(ui->comboBox_status->currentIndex()==1)
     {
-        qDebug()<<"CONNECTING TO SERVER"<<endl;
-        QString IP = "120.78.235.195";
-        quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
+        if(!tcpSocketToServer->isOpen())
+        {
+            qDebug()<<"CONNECTING TO SERVER"<<endl;
+            QString IP = "120.78.235.195";
+            quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
 
-        ui->lineEdit_IP->setText(IP);
-        ui->lineEdit_port->setText(QString("%1").arg(port));
+            ui->lineEdit_IP->setText(IP);
+            ui->lineEdit_port->setText(QString("%1").arg(port));
 
-        tcpSocketToServer->connectToHost(QHostAddress(IP),port);
-        tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
+            tcpSocketToServer->connectToHost(QHostAddress(IP),port);
+            tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
 
-        qDebug()<<"Client:Request for Login"<<endl;
-        //        timer->start(1000);
+            qDebug()<<"Client:Request for Login"<<endl;
+            timer->start(1000);
+        }
     }
 
-    else if(ui->comboBox_status->currentIndex()==0)
+    else if(ui->comboBox_status->currentIndex() == 0)
     {
         for (int i=0; i<userAmount; i++)
         {
@@ -489,7 +645,10 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
         }
         userAmount = 0;
         if(tcpSocketToServer->isOpen())
+        {
             tcpSocketToServer->disconnectFromHost();
+            //            tcpSocketToServer->close();
+        }
     }
 
     else
@@ -515,4 +674,10 @@ void PowerChatClient::on_btn_close_clicked()
 void PowerChatClient::on_btn_min_clicked()
 {
     this->setWindowState(Qt::WindowMinimized);
+}
+
+void PowerChatClient::on_btn_addFriends_clicked()
+{
+    ad->show();
+    emit addWithSocket(userName,tcpSocketToServer);
 }

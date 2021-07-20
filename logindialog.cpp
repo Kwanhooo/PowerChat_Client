@@ -11,6 +11,8 @@ LoginDialog::LoginDialog(QDialog *parent) :
     ui->setupUi(this);
     this->setFixedSize(this->width(),this->height());//不让用户拉伸窗口大小
     this->setWindowTitle("PowerChat 登录");
+    this->setWindowFlag(Qt::FramelessWindowHint);
+    ui->titleBarGroup->setAlignment(Qt::AlignRight);
     ui->lineEdit_password->setEchoMode(QLineEdit::Password);//设置LineEdit的掩码模式
 }
 
@@ -38,4 +40,15 @@ void LoginDialog::on_pushButton_reg_clicked()//点击注册之后新建一个注
     RegisterDialog *regDialog = new RegisterDialog();
     regDialog->exec();
     this->close();
+}
+
+void LoginDialog::on_btn_min_clicked()
+{
+    this->setWindowState(Qt::WindowMinimized);
+}
+
+void LoginDialog::on_btn_close_clicked()
+{
+    this->close();
+    exit(0);
 }

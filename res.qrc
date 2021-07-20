@@ -4,5 +4,10 @@
         <file>disconnected_icon.png</file>
         <file>icon.png</file>
         <file>head.png</file>
+        <file>addICON.png</file>
+        <file>addSearch.png</file>
+        <file>mainBGP.png</file>
+        <file>loginBGP.png</file>
+        <file>head_chenglong.png</file>
     </qresource>
 </RCC>

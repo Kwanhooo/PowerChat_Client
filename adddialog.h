@@ -1,30 +1,44 @@
-#ifndef REGISTERDIALOG_H
-#define REGISTERDIALOG_H
+#ifndef ADDDIALOG_H
+#define ADDDIALOG_H
 
 #include <QDialog>
-#include <QMessageBox>
 
-#include "powerchatclient.h"
+#include <QTcpSocket>
+#include <QtNetwork>
+
+#include <QMessageBox>
+#include <QMouseEvent>
 
 namespace Ui {
-class RegisterDialog;
+class AddDialog;
 }
 
-class RegisterDialog : public QDialog
+class AddDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit RegisterDialog(QWidget *parent = nullptr);
-    ~RegisterDialog();
+    explicit AddDialog(QDialog *parent = nullptr);
+    ~AddDialog();
 
 private slots:
-    void on_checkBox_stateChanged(int arg1);
-    void on_pushButton_cancel_clicked();
-    void on_pushButton_reg_clicked();
+    void getTcpSocket(QString userName,QTcpSocket *tcpSocketParameter);
+
+    void getResponse(QString response);
+
+    void on_btn_cancel_clicked();
+
+    void on_btn_search_clicked();
+
+    void on_btn_min_clicked();
+
+    void on_btn_close_clicked();
 
 private:
-    Ui::RegisterDialog *ui;
+    Ui::AddDialog *ui;
+
+    QString userName;
+    QTcpSocket *tcpSocket;
 
     //由于去除了标题栏（因为有点丑），所以要重写鼠标事件来实现窗口的拖动
     QPoint m_lastPos;
@@ -52,4 +66,4 @@ private:
     }
 };
 
-#endif // REGISTERDIALOG_H
+#endif // ADDDIALOG_H
