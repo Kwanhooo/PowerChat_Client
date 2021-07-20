@@ -22,6 +22,8 @@
 
 #include "user.h"
 #include "adddialog.h"
+#include "chatwidget.h"
+#include "dailyattendance.h"
 
 namespace Ui {
 class PowerChatClient;
@@ -40,8 +42,6 @@ public:
     ~PowerChatClient();
 
 private slots:
-    void on_btn_clear_clicked();
-    void on_btn_send_clicked();
     void on_comboBox_online_currentIndexChanged(int index);
     void on_comboBox_offline_currentIndexChanged(int index);
     void on_btn_contact_disconnect_clicked();
@@ -49,6 +49,10 @@ private slots:
     void on_btn_close_clicked();
     void on_btn_min_clicked();
     void on_btn_addFriends_clicked();
+    void on_btn_contact_open_clicked();
+    void on_btn_iknow_clicked();
+
+    void on_btn_card_clicked();
 
 signals:
     //添加好友所需信号
@@ -58,6 +62,15 @@ signals:
     //鼠标事件
     void mouseButtonMove(QPoint pos);
     void signalMainWindowMove();
+
+    //聊天窗口
+    void setupChatWindow(QString,QString,QTcpSocket*);
+    void throwToChatWindow(QString);
+
+    //打卡窗口
+    void passAttendanceInfo(QString,QString,QTcpSocket*);
+    void throwToAttendance(QString);
+    void updateAttendanceAmount(QString);
 protected:
     virtual void mouseReleaseEvent(QMouseEvent *event) override;
     virtual void mouseMoveEvent(QMouseEvent *event) override;
@@ -76,6 +89,7 @@ private:
     bool isConnectedToServer;
     static const int MAX_USERS_AMOUNT = 20;
     User *userList[MAX_USERS_AMOUNT];
+    QString attendaceAmount;
 
     int userAmount;//实际所有用户总数
     void initParameter();
@@ -90,6 +104,7 @@ private:
 
     //其他窗口
     AddDialog *ad;
+    DailyAttendance *daily;
 };
 
 #endif // POWERCHATCLIENT_H

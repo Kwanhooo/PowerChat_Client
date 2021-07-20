@@ -3,6 +3,7 @@
 
 #include "logindialog.h"
 #include "registerdialog.h"
+#include "chatwidget.h"
 
 QString loginCertificate = "";//登陆凭证设为全局变量，以便在登录注册以及主窗口中都可用
 
@@ -20,6 +21,13 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
     //初始化一些必要设置参数
     initParameter();
 
+    //初始化UI
+    ui->textBrowser->hide();
+    ui->label_log_title->hide();
+    ui->btn_iknow->hide();
+    this->setMaximumHeight(470);
+    this->setMinimumHeight(470);
+
     //输出本机的网络信息（调试用）
     initClientConfig();
 
@@ -34,6 +42,12 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
     ad->hide();
     connect(this,SIGNAL(addWithSocket(QString,QTcpSocket*)),ad,SLOT(getTcpSocket(QString,QTcpSocket*)));
     connect(this,SIGNAL(addResponse(QString)),ad,SLOT(getResponse(QString)));
+
+    this->daily = new DailyAttendance();
+    daily->hide();
+    this->attendaceAmount = "N/A";
+    connect(this,SIGNAL(passAttendanceInfo(QString,QString,QTcpSocket*)),daily,SLOT(getAttendanceInfo(QString,QString,QTcpSocket*)));
+    connect(this,SIGNAL(throwToAttendance(QString)),daily,SLOT(getAttendanceResponse(QString)));
 }
 
 PowerChatClient::~PowerChatClient()
@@ -102,9 +116,6 @@ void PowerChatClient::firstConnectWithServer()
     QString IP = "120.78.235.195";
     //仅指令收发端口8800       正式服务器端口10086
     quint16 port = 10086;
-
-    ui->lineEdit_IP->setText(IP);
-    ui->lineEdit_port->setText(QString("%1").arg(port));
 
     tcpSocketToServer->connectToHost(QHostAddress(IP),port);
     tcpSocketToServer->write("##LOGIN_REQUEST");
@@ -188,7 +199,6 @@ void PowerChatClient::setupTCP()
                     this->close();
 
                 qDebug()<<"发送登录凭证::"<<loginCertificate<<endl;
-                ui->btn_send->setEnabled(false);
 
                 if(loginCertificate != "")
                 {
@@ -196,8 +206,9 @@ void PowerChatClient::setupTCP()
                 }
             }
             else if(response.section("##",1,1)=="LOGIN_SUCCESS")
-                //##LOGIN_SUCCESS##userName
+                //##LOGIN_SUCCESS##userName##打卡人数
             {
+                this->attendaceAmount = response.section("##",3,3);
                 this->userName = response.section("##",2,2);
                 tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
                 QString userNameLabelText = userName;
@@ -215,10 +226,12 @@ void PowerChatClient::setupTCP()
                 if(currentHour == 23||currentHour == 0)
                     userNameLabelText.append("，早点睡觉吧");
                 ui->label_userName->setText(userNameLabelText);
+                QApplication::alert(this);
             }
 
-            else if (response.section("##",1,1)=="REGISTER_SUCCESS")//##REGISTER_SUCCESS##userName
+            else if (response.section("##",1,1)=="REGISTER_SUCCESS")//##REGISTER_SUCCESS##userName##打卡人数
             {
+                this->attendaceAmount = response.section("##",3,3);
                 userName = response.section("##",2,2);
                 QMessageBox::information(nullptr,"注册成功",QString("%1，欢迎加入PowerChat！").arg(this->userName));
                 //加入问候语
@@ -240,7 +253,7 @@ void PowerChatClient::setupTCP()
 
                 //登陆成功，向Server端发送申请，获取用户列表信息
                 tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
-                //##REQUEST_USER_CONFIG##userName
+                QApplication::alert(this);
             }
 
             else if(response.section("##",1,1)=="LOGIN_FAILED")
@@ -325,6 +338,10 @@ void PowerChatClient::setupTCP()
                         userInfo>>port;
 
                         User* user = new User(name,status,IP,port);
+                        user->cw = new ChatWidget;
+                        user->cw->hide();
+                        user->cw->setupThisWindow(userName,name,tcpSocketToServer,ad);
+                        connect(this,SIGNAL(throwToChatWindow(QString)),user->cw,SLOT(getChatMsg(QString)));
                         this->userList[i] = user;
 
                         //将用户列表分列到在线和离线中
@@ -380,7 +397,15 @@ void PowerChatClient::setupTCP()
                 //##OFFLINE_MESSAGE##amount##senderName&&msg&&recipientName(MSG1)##(MSG2)##....
             {
                 if(response.section("##",2,2).toInt()==0)
+                {
                     ui->textBrowser->append("--------您离线期间无好友消息---------");
+                    ui->label_log_title->show();
+                    ui->btn_iknow->show();
+                    ui->textBrowser->show();
+                    this->setMaximumHeight(640);
+                    this->setMinimumHeight(640);
+                    QApplication::alert(this);
+                }
                 else
                     //离线消息
                 {
@@ -394,6 +419,12 @@ void PowerChatClient::setupTCP()
                         QString recipientName = temp.section("&&",2,2);
                         qDebug()<<msg<<endl;
                         ui->textBrowser->append("------------您有离线消息-----------");
+                        ui->label_log_title->show();
+                        ui->btn_iknow->show();
+                        ui->textBrowser->show();
+                        this->setMaximumHeight(640);
+                        this->setMinimumHeight(640);
+                        QApplication::alert(this);
 
                         //是指令类型的信息
                         if(msg.contains("NEW_FRIEND_REQUEST"))
@@ -452,7 +483,11 @@ void PowerChatClient::setupTCP()
 
                         //是好友消息
                         else
-                            ui->textBrowser->append(QString("<font color=orange>%1:</font><font color=black>%2</font>").arg(friendName).arg(msg)); //消息显示格式！
+                        {
+                            QString newResponse = friendName + "##" + msg + "##" + userName;
+                            this->throwToChatWindow(newResponse);
+                        }
+
                     }
                 }
             }
@@ -511,6 +546,20 @@ void PowerChatClient::setupTCP()
                     qDebug()<<"发送回应完成"<<endl;
                 }
             }
+            else if(response.section("##",1,1) == "ATTENDANCE_STATUS")
+            {
+                QString amount = response.section("##",3,3);
+                this->attendaceAmount = amount;
+                emit this->throwToAttendance(response);
+            }
+
+
+            else if(response.section("##",1,1) == "ATTENDANCE_AMOUNT")
+            {
+                QString amount = response.section("##",2,2);
+                this->attendaceAmount = amount;
+            }
+
             else
             {
                 qDebug()<<"收到了不正确的指令信息！"<<endl;
@@ -521,11 +570,16 @@ void PowerChatClient::setupTCP()
             //在线消息
             //sender##MSG##recipient
         {
-            QString friendName = response.section("##",0,0);
-            QString msg = response.section("##",1,1);
-            QString receiverName = response.section("##",2,2);
-            ui->textBrowser->append("--------------"+QTime::currentTime().toString("hh:mm")+"--------------");
-            ui->textBrowser->append(QString("<font color=orange>%1:</font><font color=black>%2</font>").arg(friendName).arg(msg));
+            qDebug()<<"将消息传递到聊天窗口中..."<<endl;
+            emit throwToChatWindow(response);
+            ui->label_log_title->show();
+            ui->btn_iknow->show();
+            ui->textBrowser->show();
+            this->setMaximumHeight(640);
+            this->setMinimumHeight(640);
+            ui->textBrowser->append("-------------" + QTime::currentTime().toString("hh:mm:ss") + "-------------");
+            ui->textBrowser->append(QString("-----您有来自“%1”的未读消息-----").arg(response.section("##",0,0)));
+            QApplication::alert(this);
         }
     });
 }
@@ -536,48 +590,9 @@ void PowerChatClient::connectFailed()
     timer->stop();
 }
 
-void PowerChatClient::on_btn_clear_clicked()//清除要发送的消息
-{
-    ui->lineEdit_msg->clear();
-}
-
 /*
  * 以下代码段为槽函数
 */
-void PowerChatClient::on_btn_send_clicked()//发送消息
-{
-    if(ui->lineEdit_msg->text().trimmed()!="")
-    {
-        QString senderName = userName;
-        QString recipientName = "";
-        if(ui->comboBox_offline->currentIndex()!=0)
-        {
-            recipientName = ui->comboBox_offline->currentText();
-        }
-        else if(ui->comboBox_online->currentIndex()!=0)
-        {
-            QStringList temp = ui->comboBox_online->currentText().split("-");
-            recipientName = temp.first().trimmed();
-        }
-        else
-        {
-            ui->textBrowser->append("System:请选择您要发送消息的好友");
-            return;
-        }
-        QString msgToSend = senderName.append(QString("##%1##").arg(ui->lineEdit_msg->text())).append(recipientName);
-
-
-        tcpSocketToServer->write(msgToSend.toUtf8());
-        qDebug()<<"MESSAGE HAS SENT TO SERVER::"<<msgToSend<<endl;
-
-        QString msg = QString("<font color=blue>%1:</font><font color=black>%2</font>")
-                .arg(userName).arg(ui->lineEdit_msg->text()); //将自己发的消息显示上来
-
-        ui->textBrowser->append("--------------" + QTime::currentTime().toString("hh:mm") + "---------------");
-        ui->textBrowser->append(msg);
-        ui->lineEdit_msg->clear();
-    }
-}
 
 
 void PowerChatClient::on_comboBox_online_currentIndexChanged(int index)//从在线好友列表中找到要联系的好友
@@ -588,17 +603,8 @@ void PowerChatClient::on_comboBox_online_currentIndexChanged(int index)//从在�
             ui->comboBox_online->setCurrentIndex(0);
         else
         {
-            ui->btn_send->setEnabled(true);
             ui->comboBox_offline->setCurrentIndex(0);
             ui->comboBox_offline->setEnabled(false);
-            for (int i = 0;i < userAmount;i++)
-            {
-                if(userList[i]->userName == ui->comboBox_online->currentText())
-                {
-                    ui->lineEdit_IP->setText(userList[i]->IP);
-                    ui->lineEdit_port->setText(QString("%1").arg(userList[i]->port));
-                }
-            }
         }
     }
     else
@@ -613,7 +619,6 @@ void PowerChatClient::on_comboBox_offline_currentIndexChanged(int index)//从离
     {
         ui->comboBox_online->setEnabled(false);
         ui->comboBox_online->setCurrentIndex(0);
-        ui->btn_send->setEnabled(true);
     }
 }
 
@@ -621,10 +626,6 @@ void PowerChatClient::on_btn_contact_disconnect_clicked()//不想和你聊了，
 {
     ui->comboBox_online->setCurrentIndex(0);
     ui->comboBox_offline->setCurrentIndex(0);
-    ui->textBrowser->clear();
-    ui->lineEdit_msg->clear();
-    ui->lineEdit_IP->setText("120.78.235.195");
-    ui->lineEdit_port->setText("10086");
 }
 
 void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户状态变更
@@ -636,18 +637,13 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
         QString IP = "120.78.235.195";
         quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
 
-        ui->lineEdit_IP->setText(IP);
-        ui->lineEdit_port->setText(QString("%1").arg(port));
-
         tcpSocketToServer->connectToHost(QHostAddress(IP),port);
         tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
 
         qDebug()<<"Request for Login"<<endl;
+        this->hasLoadOffline = false;
         timer->start(1000);
     }
-
-
-    //2021.7.20 -> 原来是让客户端主动断开连接，相同IP下登录多个账号会导致错误的账号离线，现改为服务器端收到申请后主动与客户端断开连接
 
     else if(ui->comboBox_status->currentIndex() == 0)
     {
@@ -661,7 +657,6 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
         {
             tcpSocketToServer->disconnectFromHost();
             isConnectedToServer = false;
-            //            tcpSocketToServer->close();
         }
     }
 
@@ -685,4 +680,39 @@ void PowerChatClient::on_btn_addFriends_clicked()
 {
     ad->show();
     emit addWithSocket(userName,tcpSocketToServer);
+}
+
+void PowerChatClient::on_btn_contact_open_clicked()
+{
+    QString friendName;
+    if(ui->comboBox_online->currentIndex()!=0)
+        friendName = ui->comboBox_online->currentText().section("-",0,0).trimmed();
+    else
+        friendName = ui->comboBox_offline->currentText().section("-",0,0).trimmed();
+    qDebug()<<QString("现在打开聊天窗口：%1").arg(friendName)<<endl;
+
+    //找到对应好友姓名的聊天窗口
+    for (int i = 0;i < userAmount;i++)
+    {
+        if(userList[i]->userName == friendName)
+        {
+            userList[i]->cw->show();
+        }
+    }
+}
+
+void PowerChatClient::on_btn_iknow_clicked()
+{
+    ui->label_log_title->hide();
+    ui->btn_iknow->hide();
+    ui->textBrowser->clear();
+    ui->textBrowser->hide();
+    this->setMaximumHeight(470);
+    this->setMinimumHeight(470);
+}
+
+void PowerChatClient::on_btn_card_clicked()
+{
+    emit passAttendanceInfo(userName,attendaceAmount,tcpSocketToServer);
+    this->daily->show();
 }

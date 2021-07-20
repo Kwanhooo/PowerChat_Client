@@ -9,5 +9,6 @@
         <file>mainBGP.png</file>
         <file>loginBGP.png</file>
         <file>head_chenglong.png</file>
+        <file>gallery.png</file>
     </qresource>
 </RCC>

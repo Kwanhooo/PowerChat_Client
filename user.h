@@ -2,6 +2,7 @@
 #define USER_H
 
 #include <QString>
+#include "chatwidget.h"
 
 class User
 {
@@ -26,6 +27,7 @@ public:
     QString IP;
     int port;
 
+    ChatWidget *cw;
 };
 
 #endif // USER_H

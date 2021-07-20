@@ -6,4 +6,5 @@ User::User(QString userName, int status, QString IP, int port)
     this->status = status;
     this->IP = IP;
     this->port = port;
+    this->cw = nullptr;
 }
