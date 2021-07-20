@@ -51,6 +51,7 @@ void PowerChatClient::initParameter()
     this->userAmount = 0;//用户总数设为0
 
     this->hasLoadOffline = false;
+    this->isConnectedToServer = false;
 
     timer = new QTimer();//初始化Qt计时器用于检测与服务器的连接是否超时
 
@@ -138,11 +139,14 @@ void PowerChatClient::setupTCP()
     //如果与Server端建立连接
     connect(tcpSocketToServer,&QTcpSocket::connected,[=]()
     {
+        isConnectedToServer = true;//标示已经与服务器连接
         qDebug()<<"已经连接至服务器"<<endl;
         ui->label_status->setText("已连接至服务器 120.78.235.195:10086");
 
+        //向服务器发送登录申请，等待其回应
         tcpSocketToServer->write("##LOGIN_REQUEST");
 
+        //预设状态为在线
         ui->comboBox_status->setCurrentIndex(1);
 
     });
@@ -150,6 +154,7 @@ void PowerChatClient::setupTCP()
     //如果与Server端断开连接
     connect(tcpSocketToServer,&QTcpSocket::disconnected,[=]()
     {
+        isConnectedToServer = false;
         ui->label_status->setText("等待连接...");
         //清空好友列表
         ui->label_online_num->setText("0");
@@ -292,6 +297,12 @@ void PowerChatClient::setupTCP()
                 ui->comboBox_online->addItem("未选择");
                 qDebug()<<"重置UI成功"<<endl;
 
+                //由于TCP粘滞，部分情况下会导致多条更新指令粘合，现在要取最后一条为准
+                QStringList commandList = response.split('*');
+                response = commandList.takeAt(commandList.count()-2);
+
+                qDebug()<<"新的response::"<<response<<endl;
+
                 //设置用户信息
                 this->userAmount = response.section("##",2,2).toInt();
                 qDebug()<<"userAmount = "<<userAmount<<endl;
@@ -418,6 +429,7 @@ void PowerChatClient::setupTCP()
                                 tcpSocketToServer->write(responseToServer.toUtf8());
                                 qDebug()<<"发送回应完成"<<endl;
                             }
+
                         }
 
                         else if(msg.contains("FRIEND_REQUEST_STATUS"))
@@ -617,24 +629,25 @@ void PowerChatClient::on_btn_contact_disconnect_clicked()//不想和你聊了，
 
 void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户状态变更
 {
-    if(ui->comboBox_status->currentIndex()==1)
+
+    if(!isConnectedToServer&&ui->comboBox_status->currentIndex() == 1)
     {
-        if(!tcpSocketToServer->isOpen())
-        {
-            qDebug()<<"CONNECTING TO SERVER"<<endl;
-            QString IP = "120.78.235.195";
-            quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
+        qDebug()<<"CONNECTING TO SERVER"<<endl;
+        QString IP = "120.78.235.195";
+        quint16 port = 10086;//测试服端口8800（仅手动收发调试指令）       正式服端口10086
 
-            ui->lineEdit_IP->setText(IP);
-            ui->lineEdit_port->setText(QString("%1").arg(port));
+        ui->lineEdit_IP->setText(IP);
+        ui->lineEdit_port->setText(QString("%1").arg(port));
 
-            tcpSocketToServer->connectToHost(QHostAddress(IP),port);
-            tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
+        tcpSocketToServer->connectToHost(QHostAddress(IP),port);
+        tcpSocketToServer->write("##LOGIN_REQUEST");//##LOGIN_REQUEST
 
-            qDebug()<<"Client:Request for Login"<<endl;
-            timer->start(1000);
-        }
+        qDebug()<<"Request for Login"<<endl;
+        timer->start(1000);
     }
+
+
+    //2021.7.20 -> 原来是让客户端主动断开连接，相同IP下登录多个账号会导致错误的账号离线，现改为服务器端收到申请后主动与客户端断开连接
 
     else if(ui->comboBox_status->currentIndex() == 0)
     {
@@ -647,28 +660,20 @@ void PowerChatClient::on_comboBox_status_currentIndexChanged(int index)//用户�
         if(tcpSocketToServer->isOpen())
         {
             tcpSocketToServer->disconnectFromHost();
+            isConnectedToServer = false;
             //            tcpSocketToServer->close();
         }
     }
 
-    else
-    {
-        tcpSocketToServer->write(QString("##STATUS_CHANGE_REQUEST##%1##%2").arg(userName).arg(index).toUtf8());
-    }
+    tcpSocketToServer->write(QString("##STATUS_CHANGE_REQUEST##%1##%2").arg(userName).arg(index).toUtf8());
 }
 
 void PowerChatClient::on_btn_close_clicked()
 {
-    for (int i=0; i<userAmount; i++)
-    {
-        delete userList[i];
-        userList[i] = nullptr;
-    }
-    userAmount = 0;
     if(tcpSocketToServer->isOpen())
         tcpSocketToServer->disconnectFromHost();
 
-    this->close();
+    exit(0);
 }
 
 void PowerChatClient::on_btn_min_clicked()

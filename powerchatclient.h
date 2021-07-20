@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QTextStream>
 #include <QtNetwork>
+#include <QtGui>
 
 #include <QMouseEvent>
 #include <QPoint>
@@ -72,6 +73,7 @@ private:
     //一些必要参数以及初始化
     QString userName;
     bool hasLoadOffline;//是否已经请求加载离线消息
+    bool isConnectedToServer;
     static const int MAX_USERS_AMOUNT = 20;
     User *userList[MAX_USERS_AMOUNT];
 

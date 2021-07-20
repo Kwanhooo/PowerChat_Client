@@ -34,6 +34,7 @@ void AddDialog::getResponse(QString response)
         qDebug()<<"找到了好友:"<<response.section("##",2,2);
         QMessageBox::information(this,"成功",QString("好友请求已经发送给%1").arg(response.section("##",2,2)));
         ui->lineEdit_name->clear();
+        this->hide();
     }
     else
     {
