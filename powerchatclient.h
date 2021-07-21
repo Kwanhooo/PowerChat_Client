@@ -22,6 +22,7 @@
 
 #include "user.h"
 #include "adddialog.h"
+#include "deletedialog.h"
 #include "chatwidget.h"
 #include "dailyattendance.h"
 
@@ -51,26 +52,33 @@ private slots:
     void on_btn_addFriends_clicked();
     void on_btn_contact_open_clicked();
     void on_btn_iknow_clicked();
-
     void on_btn_card_clicked();
 
+    void on_btn_chatRoom_clicked();
+
+    void on_btn_deleteFriends_clicked();
+
 signals:
-    //添加好友所需信号
+    //添加好友窗口所需信号
     void addWithSocket(QString,QTcpSocket*);
     void addResponse(QString);
+
+    //删除好友窗口所需信号
+    void deleteWithSocket(QString,QTcpSocket*);
+    void deleteResponse(QString);
 
     //鼠标事件
     void mouseButtonMove(QPoint pos);
     void signalMainWindowMove();
 
     //聊天窗口
-    void setupChatWindow(QString,QString,QTcpSocket*);
     void throwToChatWindow(QString);
 
     //打卡窗口
     void passAttendanceInfo(QString,QString,QTcpSocket*);
     void throwToAttendance(QString);
     void updateAttendanceAmount(QString);
+
 protected:
     virtual void mouseReleaseEvent(QMouseEvent *event) override;
     virtual void mouseMoveEvent(QMouseEvent *event) override;
@@ -90,9 +98,12 @@ private:
     static const int MAX_USERS_AMOUNT = 20;
     User *userList[MAX_USERS_AMOUNT];
     QString attendaceAmount;
-
+    QString avatar;
+    QString Bio;
     int userAmount;//实际所有用户总数
     void initParameter();
+
+    //一些连接相关函数
     void firstConnectWithServer();
     void initClientConfig();
     void setupTCP();
@@ -104,7 +115,13 @@ private:
 
     //其他窗口
     AddDialog *ad;
+
+    DeleteDialog *dd;
+
     DailyAttendance *daily;
+
+    ChatWidget *groupChatWindow;
+    QString groupOnlineAmount;
 };
 
 #endif // POWERCHATCLIENT_H

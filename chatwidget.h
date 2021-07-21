@@ -21,7 +21,9 @@ class ChatWidget : public QWidget
 public:
     explicit ChatWidget(QWidget *parent = nullptr);
     ~ChatWidget();
-    void setupThisWindow(QString userNamePara, QString friendNamePara, QTcpSocket *tcpSocketPara,AddDialog* ad);
+    void setupThisWindow(QString userNamePara,QString userAvatarPara,QString userBioPara
+                         ,QString friendNamePara,QString friendAvatarPara,QString friendBioPara,
+                         QTcpSocket *tcpSocketPara,AddDialog* ad);
 
 protected:
     virtual void mouseReleaseEvent(QMouseEvent *event) override;
@@ -31,7 +33,11 @@ protected:
 private:
     Ui::ChatWidget *ui;
     QString userName;
+    QString userAvatar;
+    QString userBio;
     QString friendName;
+    QString friendAvatar;
+    QString friendBio;
     QTcpSocket* tcpSocket;
     QString response;
     AddDialog* ad;

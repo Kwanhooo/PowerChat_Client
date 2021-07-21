@@ -22,9 +22,29 @@ private slots:
     void on_checkBox_stateChanged(int arg1);
     void on_pushButton_cancel_clicked();
     void on_pushButton_reg_clicked();
+    void on_btn_min_clicked();
+    void on_btn_close_clicked();
+
+    void on_btn_1_clicked();
+    void on_btn_2_clicked();
+    void on_btn_3_clicked();
+    void on_btn_4_clicked();
+    void on_btn_5_clicked();
+    void on_btn_6_clicked();
+    void on_btn_7_clicked();
+    void on_btn_8_clicked();
+    void on_btn_9_clicked();
+    void on_btn_10_clicked();
+    void on_btn_11_clicked();
+    void on_btn_12_clicked();
+    void on_btn_13_clicked();
+    void on_btn_14_clicked();
+    void on_btn_15_clicked();
 
 private:
     Ui::RegisterDialog *ui;
+    QString avatarSetting;
+    QString Bio;
 
     //由于去除了标题栏（因为有点丑），所以要重写鼠标事件来实现窗口的拖动
     QPoint m_lastPos;
@@ -50,6 +70,8 @@ private:
         m_lastPos = event->globalPos();
         isPressedWidget = false;
     }
+
+
 };
 
 #endif // REGISTERDIALOG_H

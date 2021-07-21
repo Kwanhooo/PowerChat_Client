@@ -1,34 +1,44 @@
-#ifndef LOGINDIALOG_H
-#define LOGINDIALOG_H
+#ifndef DELETEDIALOG_H
+#define DELETEDIALOG_H
+
+#include <QWidget>
 
 #include <QDialog>
-#include <QDebug>
-#include <QMessageBox>
 
-#include "powerchatclient.h"
-#include "registerdialog.h"
+#include <QTcpSocket>
+#include <QtNetwork>
+
+#include <QMessageBox>
+#include <QMouseEvent>
 
 namespace Ui {
-class LoginDialog;
+class DeleteDialog;
 }
 
-class LoginDialog : public QDialog
+class DeleteDialog : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit LoginDialog(QDialog *parent = nullptr);
-    ~LoginDialog();
-    RegisterDialog *regDialog;
+    explicit DeleteDialog(QWidget *parent = nullptr);
+    ~DeleteDialog();
 
 private slots:
-    void on_pushButton_login_clicked();
-    void on_pushButton_reg_clicked();
+    void deleteGetTcpSocket(QString userName,QTcpSocket *tcpSocketParameter);
+    void deleteGetResponse(QString response);
+
+    void on_btn_cancel_clicked();
+
     void on_btn_min_clicked();
+
     void on_btn_close_clicked();
 
+    void on_btn_search_clicked();
+
 private:
-    Ui::LoginDialog *ui;
+    Ui::DeleteDialog *ui;
+    QString userName;
+    QTcpSocket *tcpSocket;
 
     //由于去除了标题栏（因为有点丑），所以要重写鼠标事件来实现窗口的拖动
     QPoint m_lastPos;
@@ -56,4 +66,4 @@ private:
     }
 };
 
-#endif // LOGINDIALOG_H
+#endif // DELETEDIALOG_H

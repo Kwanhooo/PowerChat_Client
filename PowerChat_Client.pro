@@ -33,7 +33,8 @@ SOURCES += \
     registerdialog.cpp \
     chatwidget.cpp \
     adddialog.cpp \
-    dailyattendance.cpp
+    dailyattendance.cpp \
+    deletedialog.cpp
 
 HEADERS += \
         powerchatclient.h \
@@ -42,7 +43,8 @@ HEADERS += \
     registerdialog.h \
     chatwidget.h \
     adddialog.h \
-    dailyattendance.h
+    dailyattendance.h \
+    deletedialog.h
 
 FORMS += \
         powerchatclient.ui \
@@ -50,7 +52,8 @@ FORMS += \
     registerdialog.ui \
     chatwidget.ui \
     adddialog.ui \
-    dailyattendance.ui
+    dailyattendance.ui \
+    deletedialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

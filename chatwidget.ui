@@ -35,19 +35,19 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>13</y>
+      <y>15</y>
       <width>661</width>
       <height>31</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>微软雅黑</family>
-      <pointsize>14</pointsize>
+      <family>造字工房兰颂体（非商用）</family>
+      <pointsize>16</pointsize>
      </font>
     </property>
     <property name="text">
-     <string/>
+     <string>朋友的名字</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btn_close">
@@ -179,6 +179,8 @@ QPushButton:hover{
      <font>
       <family>微软雅黑</family>
       <pointsize>10</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
      </font>
     </property>
     <property name="text">
@@ -198,6 +200,8 @@ QPushButton:hover{
      <font>
       <family>微软雅黑</family>
       <pointsize>10</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
      </font>
     </property>
     <property name="text">
@@ -299,7 +303,7 @@ QPushButton:hover{
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">background-color: rgb(235, 235, 235);</string>
+    <string notr="true"/>
    </property>
    <property name="frameShape">
     <enum>QFrame::StyledPanel</enum>
@@ -310,14 +314,14 @@ QPushButton:hover{
    <widget class="QLabel" name="label_head_friend">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>45</x>
       <y>20</y>
       <width>101</width>
       <height>91</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">image: url(:/mainBGP.png);</string>
+     <string notr="true">image: url(:/7.png);</string>
     </property>
     <property name="text">
      <string/>
@@ -326,43 +330,91 @@ QPushButton:hover{
    <widget class="QLabel" name="label_head_mine">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>45</x>
       <y>270</y>
       <width>101</width>
       <height>91</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">image: url(:/head_chenglong.png);</string>
+     <string notr="true">image: url(:/15.png);</string>
     </property>
     <property name="text">
      <string/>
     </property>
    </widget>
-   <widget class="QLabel" name="label_info_friend">
+   <widget class="QLabel" name="label_name_friend">
     <property name="geometry">
      <rect>
-      <x>65</x>
+      <x>4</x>
       <y>130</y>
-      <width>54</width>
-      <height>12</height>
+      <width>184</width>
+      <height>25</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>造字工房自在体（非商用）</family>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string/>
+     <string>朋友的名字</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_info_mine">
+   <widget class="QLabel" name="label_name_mine">
     <property name="geometry">
      <rect>
-      <x>65</x>
-      <y>390</y>
-      <width>54</width>
-      <height>12</height>
+      <x>4</x>
+      <y>380</y>
+      <width>184</width>
+      <height>25</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>造字工房自在体（非商用）</family>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string/>
+     <string>我的名字</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_bio_friend">
+    <property name="geometry">
+     <rect>
+      <x>4</x>
+      <y>160</y>
+      <width>184</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>造字工房怪魅体（非商用）</family>
+     </font>
+    </property>
+    <property name="text">
+     <string>朋友的签名</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_bio_mine">
+    <property name="geometry">
+     <rect>
+      <x>4</x>
+      <y>410</y>
+      <width>184</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>造字工房怪魅体（非商用）</family>
+     </font>
+    </property>
+    <property name="text">
+     <string>我的签名</string>
     </property>
    </widget>
   </widget>
@@ -377,7 +429,7 @@ QPushButton:hover{
    </property>
    <property name="font">
     <font>
-     <family>微软雅黑</family>
+     <family>造字工房行舟体（非商用）</family>
      <pointsize>12</pointsize>
     </font>
    </property>

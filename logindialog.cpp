@@ -37,9 +37,9 @@ void LoginDialog::on_pushButton_login_clicked()//按下登录按钮之后执行�
 
 void LoginDialog::on_pushButton_reg_clicked()//点击注册之后新建一个注册窗口，并将登录窗口关闭
 {
-    RegisterDialog *regDialog = new RegisterDialog();
-    regDialog->exec();
     this->close();
+    regDialog = new RegisterDialog();
+    regDialog->exec();
 }
 
 void LoginDialog::on_btn_min_clicked()

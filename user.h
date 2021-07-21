@@ -9,7 +9,7 @@ class User
 private:
 
 public:
-    User(QString userName,int status,QString IP,int port);
+    User(QString userName,int status,QString IP,int port,QString avatar,QString Bio);
     QString userName;
     int status;
     /*
@@ -26,6 +26,8 @@ public:
 
     QString IP;
     int port;
+    QString avatar;
+    QString Bio;
 
     ChatWidget *cw;
 };

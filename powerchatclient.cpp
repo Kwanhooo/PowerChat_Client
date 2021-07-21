@@ -27,6 +27,8 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
     ui->btn_iknow->hide();
     this->setMaximumHeight(470);
     this->setMinimumHeight(470);
+    this->repaint();
+    qApp->processEvents();
 
     //输出本机的网络信息（调试用）
     initClientConfig();
@@ -38,16 +40,30 @@ PowerChatClient::PowerChatClient(QWidget *parent) :
     firstConnectWithServer();
 
     //初始化其他窗口
+    //加好友窗口
     this->ad = new AddDialog();
     ad->hide();
     connect(this,SIGNAL(addWithSocket(QString,QTcpSocket*)),ad,SLOT(getTcpSocket(QString,QTcpSocket*)));
     connect(this,SIGNAL(addResponse(QString)),ad,SLOT(getResponse(QString)));
 
+    //删好友窗口
+    this->dd = new DeleteDialog();
+    dd->hide();
+    connect(this,SIGNAL(deleteWithSocket(QString,QTcpSocket*)),dd,SLOT(deleteGetTcpSocket(QString,QTcpSocket*)));
+    connect(this,SIGNAL(deleteResponse(QString)),dd,SLOT(deleteGetResponse(QString)));
+
+    //打卡窗口
     this->daily = new DailyAttendance();
     daily->hide();
     this->attendaceAmount = "N/A";
     connect(this,SIGNAL(passAttendanceInfo(QString,QString,QTcpSocket*)),daily,SLOT(getAttendanceInfo(QString,QString,QTcpSocket*)));
     connect(this,SIGNAL(throwToAttendance(QString)),daily,SLOT(getAttendanceResponse(QString)));
+
+    //公共聊天室窗口
+    groupChatWindow = new ChatWidget();
+    connect(this,SIGNAL(throwToChatWindow(QString)),groupChatWindow,SLOT(getChatMsg(QString)));
+    groupChatWindow->hide();
+    groupOnlineAmount = "1";
 }
 
 PowerChatClient::~PowerChatClient()
@@ -185,6 +201,7 @@ void PowerChatClient::setupTCP()
         qDebug()<<"RESPONSE::"<<response<<endl;
         if(response.at(0)=='#'&&response.at(1)=='#')//服务器发来的是指令
         {
+
             //接收到服务器的登录许可，打开登录窗口
             if(response == "##LOGIN_PERMISSION" )
                 //##LOGIN_PERMISSION
@@ -205,11 +222,18 @@ void PowerChatClient::setupTCP()
                     tcpSocketToServer->write(loginCertificate.toUtf8());
                 }
             }
+
+
             else if(response.section("##",1,1)=="LOGIN_SUCCESS")
                 //##LOGIN_SUCCESS##userName##打卡人数
             {
-                this->attendaceAmount = response.section("##",3,3);
                 this->userName = response.section("##",2,2);
+                this->attendaceAmount = response.section("##",3,3);
+                this->avatar = response.section("##",4,4);
+                this->Bio = response.section("##",5,5);
+                ui->label->setStyleSheet(QString("image: url(:/%1.png);").arg(avatar));
+                ui->label_Bio->setText(Bio);
+
                 tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
                 QString userNameLabelText = userName;
                 int currentHour = QTime::currentTime().hour();
@@ -229,10 +253,16 @@ void PowerChatClient::setupTCP()
                 QApplication::alert(this);
             }
 
-            else if (response.section("##",1,1)=="REGISTER_SUCCESS")//##REGISTER_SUCCESS##userName##打卡人数
+
+            else if (response.section("##",1,1)=="REGISTER_SUCCESS")//##REGISTER_SUCCESS##userName##打卡人数##头像##个性签名
             {
+                this->userName = response.section("##",2,2);
                 this->attendaceAmount = response.section("##",3,3);
-                userName = response.section("##",2,2);
+                this->avatar = response.section("##",4,4);
+                this->Bio = response.section("##",5,5);
+                ui->label->setStyleSheet(QString("image: url(:/%1.png);").arg(avatar));
+                ui->label_Bio->setText(Bio);
+
                 QMessageBox::information(nullptr,"注册成功",QString("%1，欢迎加入PowerChat！").arg(this->userName));
                 //加入问候语
                 QString userNameLabelText = userName;
@@ -255,6 +285,7 @@ void PowerChatClient::setupTCP()
                 tcpSocketToServer->write(QString("##REQUEST_USER_CONFIG##%1").arg(userName).toUtf8());
                 QApplication::alert(this);
             }
+
 
             else if(response.section("##",1,1)=="LOGIN_FAILED")
                 //##LOGIN_FAILED##userName
@@ -289,9 +320,11 @@ void PowerChatClient::setupTCP()
                 this->firstConnectWithServer();
             }
 
+
             else if(response.section("##",1,1)=="UPDATE_USER_CONFIG")//重新刷新一次客户端的用户列表
                 //##UPDATE_USER_CONFIG##USERAMOUNT##INFO STREAM
             {
+                updateConfig:
                 qDebug()<<"检测到载入用户信息指令"<<endl;
 
                 //置空用户列表
@@ -332,15 +365,20 @@ void PowerChatClient::setupTCP()
                         QString name,IP;
                         int port;
                         int status;
+                        QString avatarFriend;
+                        QString BioFriend;
+
                         userInfo>>name;
                         userInfo>>status;
                         userInfo>>IP;
                         userInfo>>port;
+                        userInfo>>avatarFriend;
+                        userInfo>>BioFriend;
 
-                        User* user = new User(name,status,IP,port);
+                        User* user = new User(name,status,IP,port,avatar,Bio);
                         user->cw = new ChatWidget;
                         user->cw->hide();
-                        user->cw->setupThisWindow(userName,name,tcpSocketToServer,ad);
+                        user->cw->setupThisWindow(this->userName,this->avatar,this->Bio,name,avatarFriend,BioFriend,tcpSocketToServer,ad);
                         connect(this,SIGNAL(throwToChatWindow(QString)),user->cw,SLOT(getChatMsg(QString)));
                         this->userList[i] = user;
 
@@ -398,12 +436,14 @@ void PowerChatClient::setupTCP()
             {
                 if(response.section("##",2,2).toInt()==0)
                 {
-                    ui->textBrowser->append("--------您离线期间无好友消息---------");
+                    ui->textBrowser->append("-------您离线期间无好友消息--------");
                     ui->label_log_title->show();
                     ui->btn_iknow->show();
                     ui->textBrowser->show();
-                    this->setMaximumHeight(640);
+                    this->setMaximumHeight(650);
                     this->setMinimumHeight(640);
+                    this->repaint();
+                    qApp->processEvents();
                     QApplication::alert(this);
                 }
                 else
@@ -418,12 +458,14 @@ void PowerChatClient::setupTCP()
                         QString msg = temp.section("&&",1,1);
                         QString recipientName = temp.section("&&",2,2);
                         qDebug()<<msg<<endl;
-                        ui->textBrowser->append("------------您有离线消息-----------");
+                        ui->textBrowser->append("-----------您有离线消息----------");
                         ui->label_log_title->show();
                         ui->btn_iknow->show();
                         ui->textBrowser->show();
-                        this->setMaximumHeight(640);
+                        this->setMaximumHeight(650);
                         this->setMinimumHeight(640);
+                        this->repaint();
+                        qApp->processEvents();
                         QApplication::alert(this);
 
                         //是指令类型的信息
@@ -481,9 +523,17 @@ void PowerChatClient::setupTCP()
                             }
                         }
 
+                        else if(msg.contains("DELETE_NOTICE"))
+                            //@@DELETE_NOTICE@@REQUESTER
+                        {
+                            QMessageBox::information(this,"删除消息",QString("%1把你删除了，快去揍他！").arg(msg.section("@@",2,2)));
+                        }
+
+
                         //是好友消息
                         else
                         {
+                            ui->textBrowser->append(QString("消息提示：您有来自\"%1\"的离线消息").arg(friendName));
                             QString newResponse = friendName + "##" + msg + "##" + userName;
                             this->throwToChatWindow(newResponse);
                         }
@@ -546,6 +596,25 @@ void PowerChatClient::setupTCP()
                     qDebug()<<"发送回应完成"<<endl;
                 }
             }
+
+            else if(response.section("##",1,1) == "DELETE_STATUS")
+                //##DELETE_STATUS##%1##SUCCESS
+            {
+                emit this->deleteResponse(response.section("@@",0,0));
+                response = response.section("@@",1,1);
+                response.append("*");
+                goto updateConfig;
+                //去往更新信息
+            }
+
+            else if(response.section("##",1,1) == "DELETE_NOTICE")
+                //##DELETE_NOTICE##谁删你
+            {
+                QMessageBox::information(this,"删除消息",QString("%1把你删除了，快去揍他！").arg(response.section("##",2,2)));
+                response = response.section("@@",1,1);
+                goto updateConfig;
+            }
+
             else if(response.section("##",1,1) == "ATTENDANCE_STATUS")
             {
                 QString amount = response.section("##",3,3);
@@ -558,6 +627,35 @@ void PowerChatClient::setupTCP()
             {
                 QString amount = response.section("##",2,2);
                 this->attendaceAmount = amount;
+            }
+
+            else if(response.section("##",1,1) == "GROUP_MESSAGE")
+                //##GROUP_MESSAGE##SENDER##MSG##ONLINEAMOUNT
+            {
+                //只更新在线人数
+                if(response.section("##",2,2) == "UPDATE" && response.section("##",3,3) == "UPDATE")
+                {
+                    qDebug()<<"只更新在线人数"<<endl;
+                    this->groupOnlineAmount = response.section("##",4,4);
+                    groupChatWindow->setupThisWindow(userName,avatar,Bio,QString("公共聊天室   ( %1 人在线)").arg(groupOnlineAmount),"group","在这里分享快乐 ！",tcpSocketToServer,ad);
+                }
+                else
+                {
+                    qDebug()<<"是普通聊天室消息，现在转入到聊天窗口"<<response<<endl;
+                    emit throwToChatWindow(response);
+                    this->groupOnlineAmount = response.section("##",4,4);
+                    groupChatWindow->setupThisWindow(userName,avatar,Bio,QString("公共聊天室   ( %1 人在线)").arg(groupOnlineAmount),"group","在这里分享快乐 ！",tcpSocketToServer,ad);
+                    ui->label_log_title->show();
+                    ui->btn_iknow->show();
+                    ui->textBrowser->show();
+                    this->setMaximumHeight(650);
+                    this->setMinimumHeight(640);
+                    this->repaint();
+                    qApp->processEvents();
+                    ui->textBrowser->append("------------" + QTime::currentTime().toString("hh:mm:ss") + "------------");
+                    ui->textBrowser->append(QString("消息提示：您有聊天室的未读消息"));
+                    QApplication::alert(this);
+                }
             }
 
             else
@@ -575,10 +673,12 @@ void PowerChatClient::setupTCP()
             ui->label_log_title->show();
             ui->btn_iknow->show();
             ui->textBrowser->show();
-            this->setMaximumHeight(640);
+            this->setMaximumHeight(650);
             this->setMinimumHeight(640);
-            ui->textBrowser->append("-------------" + QTime::currentTime().toString("hh:mm:ss") + "-------------");
-            ui->textBrowser->append(QString("-----您有来自“%1”的未读消息-----").arg(response.section("##",0,0)));
+            this->repaint();
+            qApp->processEvents();
+            ui->textBrowser->append("------------" + QTime::currentTime().toString("hh:mm:ss") + "------------");
+            ui->textBrowser->append(QString("消息提示：您有来自\"%1\"的未读消息").arg(response.section("##",0,0)));
             QApplication::alert(this);
         }
     });
@@ -586,7 +686,7 @@ void PowerChatClient::setupTCP()
 
 void PowerChatClient::connectFailed()
 {
-    QMessageBox::information(this,tr("连接错误"),tr("连接服务器超时！"));
+    QMessageBox::warning(this,tr("连接错误"),tr("连接服务器超时，请检查你的网络连接！"),QMessageBox::Yes);
     timer->stop();
 }
 
@@ -682,6 +782,13 @@ void PowerChatClient::on_btn_addFriends_clicked()
     emit addWithSocket(userName,tcpSocketToServer);
 }
 
+
+void PowerChatClient::on_btn_deleteFriends_clicked()
+{
+    dd->show();
+    emit deleteWithSocket(userName,tcpSocketToServer);
+}
+
 void PowerChatClient::on_btn_contact_open_clicked()
 {
     QString friendName;
@@ -709,6 +816,8 @@ void PowerChatClient::on_btn_iknow_clicked()
     ui->textBrowser->hide();
     this->setMaximumHeight(470);
     this->setMinimumHeight(470);
+    this->repaint();
+    qApp->processEvents();
 }
 
 void PowerChatClient::on_btn_card_clicked()
@@ -716,3 +825,11 @@ void PowerChatClient::on_btn_card_clicked()
     emit passAttendanceInfo(userName,attendaceAmount,tcpSocketToServer);
     this->daily->show();
 }
+
+void PowerChatClient::on_btn_chatRoom_clicked()
+{
+    tcpSocketToServer->write("##GROUP_MESSAGE##UPDATE##UPDATE");
+    this->groupChatWindow->show();
+    groupChatWindow->setupThisWindow(userName,avatar,Bio,QString("公共聊天室   ( %1 人在线)").arg(groupOnlineAmount),"group","在这里分享快乐 ！",tcpSocketToServer,ad);
+}
+

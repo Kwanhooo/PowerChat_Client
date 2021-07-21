@@ -6,6 +6,7 @@ AddDialog::AddDialog(QDialog *parent) :
     ui(new Ui::AddDialog)
 {
     ui->setupUi(this);
+    this->setWindowTitle("PowerChat 好友添加");
     this->setWindowFlag(Qt::FramelessWindowHint);
     ui->titleBarGroup->setAlignment(Qt::AlignRight);
     this->setFixedSize(this->width(),this->height());
@@ -29,17 +30,25 @@ void AddDialog::getResponse(QString response)
 {
     qDebug()<<"好友添加界面收到RESPONSE::"<<response<<endl;
     //##IS_FRIEND_FOUND##FRIENDNAME##STATUS
-    if(response.section("##",3,3)=="TRUE")
+    if(response.section("##",3,3) == "TRUE")
     {
         qDebug()<<"找到了好友:"<<response.section("##",2,2);
-        QMessageBox::information(this,"成功",QString("好友请求已经发送给%1").arg(response.section("##",2,2)));
+        QMessageBox::information(this,"成功",QString("好友请求已经发送给%1啦，等待TA同意吧！").arg(response.section("##",2,2)));
         ui->lineEdit_name->clear();
         this->hide();
+    }
+    else if(response.section("##",3,3) == "MYSELF")
+    {
+        QMessageBox::information(this,"失败",QString("您不能加自己为好友哟！"));
+    }
+    else if(response.section("##",3,3) == "EXISTED")
+    {
+        QMessageBox::information(this,"失败",QString("%1和你已经是好友啦，不要重复添加哦！").arg(ui->lineEdit_name->text()));
     }
     else
     {
         qDebug()<<"没有找到好友:"<<response.section("##",2,2);
-        QMessageBox::information(this,"错误",QString("没有找到您输入的用户:%1，请仔细看看有没有输错哟").arg(response.section("##",2,2)));
+        QMessageBox::information(this,"错误",QString("没有找到您输入的用户:%1，请仔细看看有没有输错哟！").arg(response.section("##",2,2)));
     }
 }
 
